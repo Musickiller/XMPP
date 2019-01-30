@@ -108,9 +108,9 @@ class EchoBot(ClientXMPP):
                     sender = msg['from'[:len(master)]]
                     logging.warning("Received restart message from " +
                         "an unauthorized user!")
-                    msg.reply(f"Sorry, but you are not authorized.\n\
-                        You are {sender},\n\
-                        You have to be {master}").send()
+                    msg.reply(f"Sorry, but you are not authorized.\n" +
+                        f"You are {sender},\n" +
+                        f"You have to be {master}").send()
             else:
                 logging.info("Received gibberish message." +
                     "Replying with a help file.")
