@@ -5,7 +5,40 @@ from optparse import OptionParser
 from sleekxmpp import ClientXMPP
 from sleekxmpp.exceptions import IqError, IqTimeout
 
-xmpp_login = insert@your.login
+import os, sys
+
+
+
+name = "mk-chat_bot"
+version = "0.0.5"
+designation = "do nothing"
+master = "musickiller@dismail.de"
+
+
+help_message = f"""
+Hello, this is {name}@{version}.
+
+Designed, designated and tasked to {designation}.
+
+Posible uses include:
+
+/help -- view this help message
+
+/bot exit -- Shutdown
+    connection, and quit the program.
+    
+/bot restart -- restart the bot.
+    Yes, you can edit the code,
+    issue restart and continue 
+    doing all the stuff with
+    a minimal downtime!
+
+TODO:
+0. MAKE ID CHECK ASAP!!
+1. make helpfile using optparse?
+2. have fun
+"""
+
 
 class EchoBot(ClientXMPP):
 
@@ -31,6 +64,8 @@ class EchoBot(ClientXMPP):
         self.send_presence()
         self.get_roster()
 
+        logging.info("Ready to receive messages!")
+        
         # Most get_*/set_* methods from plugins use Iq stanzas, which
         # can generate IqError and IqTimeout exceptions
         #
@@ -53,19 +88,40 @@ class EchoBot(ClientXMPP):
                 Text: %(body)s" % msg
                 )
             
-            if msg['body'] in ('/bot exit', '/exit'):
-                msg.reply("Received exit message. Quitting now.").send()
-                logging.info("Received exit message. Quitting now.")
-                self.disconnect(wait=True)
+            if msg['body'] == '/bot exit':
+                if msg['from'[:len(master)]] == master:
+                    msg.reply("Received exit message. Quitting now.").send()
+                    logging.info("Received exit message. Quitting now.")
+                    self.disconnect(wait=True)
+                else:
+                    logging.warning("Received exit message from\
+                        an unauthorized user!")
+                    msg.reply("Sorry, but you are not authorized.").send()
+            elif msg['body'] == '/bot restart':
+                if msg['from'[:len(master)]] == master:
+                    answ = "Received restart message. Restarting now."
+                    msg.reply(answ).send()
+                    logging.info(answ)
+                    self.disconnect(wait=True)
+                    os.execl(sys.executable, sys.executable, * sys.argv)
+                else:
+                    sender = msg['from'[:len(master)]]
+                    logging.warning("Received restart message from " +
+                        "an unauthorized user!")
+                    msg.reply(f"Sorry, but you are not authorized.\n\
+                        You are {sender},\n\
+                        You have to be {master}").send()
             else:
-                msg.reply("Thanks for sending\n%(body)s" % msg).send()
+                logging.info("Received gibberish message." +
+                    "Replying with a help file.")
+                msg.reply(help_message).send()
 
 
 if __name__ == '__main__':
     # Ideally use optparse or argparse to get JID,
     # password, and log level.
 
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.INFO,
                         format='%(levelname)-8s %(message)s')
 
 
