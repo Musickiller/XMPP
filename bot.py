@@ -41,8 +41,7 @@ TODO:
 2. have fun"""
 
 sorry_message = f"""
-I'm sorry to inform you, but you,
-{login},
+I'm sorry to inform you, but you
 are not authorized to access this
 function. Try something simpler!"""
 
