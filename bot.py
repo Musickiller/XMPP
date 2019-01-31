@@ -7,13 +7,15 @@ from sleekxmpp.exceptions import IqError, IqTimeout
 
 import os, sys
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(levelname)-8s %(message)s')
 
+logging.info("Loading configuration...")
 
 name = "mk-chat_bot"
-version = "0.0.5"
+version = "1.0.0"
 designation = "do nothing"
-master = "musickiller@dismail.de"
-
+config="config.txt"
 
 help_message = f"""
 Hello, this is {name}@{version}.
@@ -34,14 +36,46 @@ Posible uses include:
     a minimal downtime!
 
 TODO:
-0. MAKE ID CHECK ASAP!!
-1. make helpfile using optparse?
+1. make the bot do something usefull
+3. may be add some OMEMO?
 2. have fun
 """
 
+params = {}
+params["masters"] = []
+config_file = open(config)
+for line in config_file:
+    line = line.rstrip('\n')
+    array = line.split("=",maxsplit=1)
+    if len(array) == 2:
+        if array[0] == "add_master":
+            params["masters"] += [array[1]]
+        else:
+            params[array[0]] = array[1]
+config_file.close()
+'''
+get(key[, default]
+Return the value for key if key is in the dictionary, else default. If default is not given, it defaults to None, so that this method never raises a KeyError.
+'''
+login = params.get("login")
+logging.debug("CONF:\tLogin is set to " + login)
+password = params.get("password")
+# logging.debug("CONF:\tPassword is set to " + password)
+masters = params.get("masters", ["NO MASTER SET!"])
+logging.debug("CONF:\tmasters are set to " + str(masters))
+
+# check:
+if masters == []: logging.error("MASTER DEVICE NOT SET!!!")
+
+logging.info("Configuration is loaded.")
 
 class EchoBot(ClientXMPP):
-
+    
+    bot_cmds = {
+        "exit":"stop_bot",
+        "restart":"restart_script"
+        }
+    
     def __init__(self, jid, password):
         ClientXMPP.__init__(self, jid, password)
 
@@ -83,48 +117,109 @@ class EchoBot(ClientXMPP):
         if msg['type'] in ('chat', 'normal'):
             # print ("Received message from %(from)s" % msg)
             # print (msg['body'])
-            logging.info("Received new message!\n\
-                From: %(from)s\n\
-                Text: %(body)s" % msg
+            logging.info(
+                """
+----------------------------
+|Received new message!
+|From: %(from)s
+|Text: %(body)s
+----------------------------""" % msg
                 )
             
-            if msg['body'] == '/bot exit':
-                if msg['from'[:len(master)]] == master:
-                    msg.reply("Received exit message. Quitting now.").send()
-                    logging.info("Received exit message. Quitting now.")
-                    self.disconnect(wait=True)
+            cmdarray = msg["body"].split(maxsplit=1)
+            if len(cmdarray) == 0:
+                cmd_source = "ERR: NO COMMAND SOURCE"
+                cmd = "ERR: NO COMMAND"
+            elif len(cmdarray) == 1:
+                if cmdarray[0][0] == "/":
+                    cmd_source = cmdarray[0]
+                    cmd = "ERR: NO COMMAND"
                 else:
-                    logging.warning("Received exit message from\
-                        an unauthorized user!")
-                    msg.reply("Sorry, but you are not authorized.").send()
-            elif msg['body'] == '/bot restart':
-                if msg['from'[:len(master)]] == master:
-                    answ = "Received restart message. Restarting now."
-                    msg.reply(answ).send()
-                    logging.info(answ)
-                    self.disconnect(wait=True)
-                    os.execl(sys.executable, sys.executable, * sys.argv)
-                else:
-                    sender = msg['from'[:len(master)]]
-                    logging.warning("Received restart message from " +
-                        "an unauthorized user!")
-                    msg.reply(f"Sorry, but you are not authorized.\n" +
-                        f"You are {sender},\n" +
-                        f"You have to be {master}").send()
+                    cmd_source = "ERR: NO COMMAND SOURCE"
+                    cmd = cmdarray[0]
             else:
-                logging.info("Received gibberish message." +
-                    "Replying with a help file.")
-                msg.reply(help_message).send()
+                if cmdarray[0][0] == "/":
+                    cmd_source = cmdarray[0]
+                    cmd = cmdarray[1]
+                else:
+                    cmd_source = "ERR: NO COMMAND SOURCE"
+                    cmd = msg["body"]
+            
+            sender = msg['from']
+            
+            if self.check_cmd_auth(cmd_source, cmd,
+                                   self.check_master(sender, masters)):
+                self.run_cmd(msg, cmd_source, cmd)
 
+    def check_master(self, sender, masters):
+        logging.debug("FUN:\tChecking user ID")
+        # sender = msg['from'].split("/",1)[0]
+        if sender in masters:
+            return "true"
+        else: return "false"
+        
+    def check_cmd_auth(self, sender="user", cmd_source="NO SOURCE",
+                       cmd="NO COMMAND", is_master="false"):
+        
+        logging.debug("FUN:\tChecking whether user is authorized to run the command")
+        master_source = ["/bot"]
+        
+        if cmd_source not in master_source or is_master=="true":
+            logging.info(f"Authorized {sender} to run {cmd_source} {cmd}")
+            return "true"
+        else:
+            logging.info(f"Denied authorization for {sender} to run " +
+                "{cmd_source} {cmd}")
+            return "false"
+        
+    def run_cmd(self, msg, source, cmd):
+        logging.debug("FUN:\tAttempting to run commmand.")
+        if source == "/bot":
+            if cmd in self.bot_cmds:
+                # now need to decide what is it that I want to run...
+                # getattr(x, 'foobar') is equivalent to x.foobar
+                # then if I need to get self.$cmd(msg), I do next:
+                getattr(self, self.bot_cmds[cmd])(msg)
+            else:
+                self.cmd_unknown(msg)
+        else:
+            self.cmd_unknown(msg)
+        
+    def cmd_unknown(self, msg):
+        logging.info("Received gibberish message. " +
+                    "Replying with a help file.")
+        msg.reply(help_message).send()
+        
+    def restart_script(self, msg):
+        answ = "Received restart message. Restarting now.\n"
+        msg.reply(answ).send()
+        logging.info(answ)
+        self.disconnect(wait=True)
+        sys.stdout.flush()
+        # in Windows, it at least looks cleaner to open a new console
+        # also I had some trouble with ctrl+c without it.
+        if os.name == 'nt':
+            args = ' '.join(sys.argv)
+            os.system('cmd /c start cmd /c' + sys.executable + ' ' + args)
+        else:
+            os.execl(sys.executable, sys.executable, * sys.argv)
+        
+        
+    def stop_bot(self, msg):
+        answ = "Received exit message. Quitting now."
+        msg.reply(answ).send()
+        logging.info(answ)
+        self.disconnect(wait=True)
+    
 
 if __name__ == '__main__':
     # Ideally use optparse or argparse to get JID,
     # password, and log level.
 
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                         format='%(levelname)-8s %(message)s')
 
-
-    xmpp = EchoBot(xmpp_login, getpass.getpass())
+    xmpp = EchoBot(login, password)
+    # xmpp = EchoBot('redfoxjump@xmpp.is', getpass.getpass())
     xmpp.connect()
     xmpp.process(block=True)
