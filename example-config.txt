@@ -1,0 +1,14 @@
+This is an example configuration file.
+
+Any lines that do not contain "equals" sign are dissmissed.
+
+Your login:
+login=jid@dealer.somewhere
+
+Your password (sorry, only plaintext now):
+password=N0=PAssWOrd
+
+Your devices that may access restricted functions:
+add_master=jid1@dealer.somewhere/Conversations.mEOw
+add_master=jid1@dealer.somewhere/notebook
+add_master=jid2@dealer.somewhere/Conversations.mEOw
