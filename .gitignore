@@ -1,3 +1,7 @@
+# configs
+# (obviously, you don'y want to sync you plaintext password, right?)
+config.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
