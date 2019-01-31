@@ -38,8 +38,15 @@ Posible uses include:
 TODO:
 1. make the bot do something usefull
 3. may be add some OMEMO?
-2. have fun
-"""
+2. have fun"""
+
+sorry_message = f"""
+I'm sorry to inform you, but you,
+{login},
+are not authorized to access this
+function. Try something simpler!"""
+
+
 
 params = {}
 params["masters"] = []
@@ -147,9 +154,13 @@ class EchoBot(ClientXMPP):
             
             sender = msg['from']
             
-            if self.check_cmd_auth(cmd_source, cmd,
-                                   self.check_master(sender, masters)):
+            if self.check_cmd_auth(
+                    sender, cmd_source, cmd,
+                    self.check_master(sender, masters)
+                    ) == "true":
                 self.run_cmd(msg, cmd_source, cmd)
+            else:
+                msg.reply(sorry_message).send()
 
     def check_master(self, sender, masters):
         logging.debug("FUN:\tChecking user ID")
@@ -163,6 +174,12 @@ class EchoBot(ClientXMPP):
         
         logging.debug("FUN:\tChecking whether user is authorized to run the command")
         master_source = ["/bot"]
+        
+        logging.debug(f"""
+            User: {sender}
+            Command source: {cmd_source}
+            Command: {cmd}
+            Is master: {is_master}""")
         
         if cmd_source not in master_source or is_master=="true":
             logging.info(f"Authorized {sender} to run {cmd_source} {cmd}")
