@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG,
 logging.info("Loading configuration...")
 
 name = "mk-chat_bot"
-version = "1.0.0"
+version = "1.0.1"
 designation = "do nothing"
 config="config.txt"
 
@@ -55,8 +55,12 @@ for line in config_file:
     array = line.split("=",maxsplit=1)
     if len(array) == 2:
         if array[0] == "add_master":
+            logging.info("New master found!")
+            logging.info(array[1])
             params["masters"] += [array[1]]
         else:
+            # uncommenting this will reveal password to stdout
+            # logging.info('New parameter "' + str(array[0]) + '" is set to "' + str(array[1]) + '"')
             params[array[0]] = array[1]
 config_file.close()
 '''
@@ -164,6 +168,8 @@ class EchoBot(ClientXMPP):
     def check_master(self, sender, masters):
         logging.debug("FUN:\tChecking user ID")
         # sender = msg['from'].split("/",1)[0]
+        # print (sender)
+        # print (masters)
         if sender in masters:
             return "true"
         else: return "false"
@@ -236,6 +242,5 @@ if __name__ == '__main__':
                         format='%(levelname)-8s %(message)s')
 
     xmpp = EchoBot(login, password)
-    # xmpp = EchoBot('redfoxjump@xmpp.is', getpass.getpass())
     xmpp.connect()
     xmpp.process(block=True)
