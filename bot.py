@@ -7,86 +7,51 @@ from sleekxmpp.exceptions import IqError, IqTimeout
 
 import os, sys
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(levelname)-8s %(message)s')
 
-logging.info("Loading configuration...")
-
-name = "mk-chat_bot"
-version = "1.0.1"
-designation = "do nothing"
-config="config.txt"
-
-help_message = f"""
-Hello, this is {name}@{version}.
-
-Designed, designated and tasked to {designation}.
-
-Posible uses include:
-
-/help -- view this help message
-
-/bot exit -- Shutdown
-    connection, and quit the program.
-    
-/bot restart -- restart the bot.
-    Yes, you can edit the code,
-    issue restart and continue 
-    doing all the stuff with
-    a minimal downtime!
-
-TODO:
-1. make the bot do something usefull
-3. may be add some OMEMO?
-2. have fun"""
-
-sorry_message = f"""
-I'm sorry to inform you, but you
-are not authorized to access this
-function. Try something simpler!"""
-
-
-
-params = {}
-params["masters"] = []
-config_file = open(config)
-for line in config_file:
-    line = line.rstrip('\n')
-    array = line.split("=",maxsplit=1)
-    if len(array) == 2:
-        if array[0] == "add_master":
-            logging.info("New master found!")
-            logging.info(array[1])
-            params["masters"] += [array[1]]
-        else:
-            # uncommenting this will reveal password to stdout
-            # logging.info('New parameter "' + str(array[0]) + '" is set to "' + str(array[1]) + '"')
-            params[array[0]] = array[1]
-config_file.close()
-'''
-get(key[, default]
-Return the value for key if key is in the dictionary, else default. If default is not given, it defaults to None, so that this method never raises a KeyError.
-'''
-login = params.get("login")
-logging.debug("CONF:\tLogin is set to " + login)
-password = params.get("password")
-# logging.debug("CONF:\tPassword is set to " + password)
-masters = params.get("masters", ["NO MASTER SET!"])
-logging.debug("CONF:\tmasters are set to " + str(masters))
-
-# check:
-if masters == []: logging.error("MASTER DEVICE NOT SET!!!")
-
-logging.info("Configuration is loaded.")
 
 class EchoBot(ClientXMPP):
+    
+    name = "mk-chat_bot"
+    version = "1.0.1"
+    designation = "do nothing"
+    config="config.txt"
+    
+    help_message = f"""
+        Hello, this is {name}@{version}.
+
+        Designed, designated and tasked to {designation}.
+
+        Posible uses include:
+
+        /help -- view this help message
+
+        /bot exit -- Shutdown
+            connection, and quit the program.
+            
+        /bot restart -- restart the bot.
+            Yes, you can edit the code,
+            issue restart and continue 
+            doing all the stuff with
+            a minimal downtime!
+
+        TODO:
+        1. make the bot do something usefull
+        3. may be add some OMEMO?
+        2. have fun"""
+
+    sorry_message = f"""
+        I'm sorry to inform you, but you
+        are not authorized to access this
+        function. Try something simpler!"""
     
     bot_cmds = {
         "exit":"stop_bot",
         "restart":"restart_script"
         }
     
+    
     def __init__(self, jid, password):
+        self.load_config()
         ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler("session_start", self.session_start)
@@ -104,6 +69,47 @@ class EchoBot(ClientXMPP):
         # import ssl
         # self.ssl_version = ssl.PROTOCOL_SSLv3
 
+    def load_config(self, log_level=logging.DEBUG,
+                    log_format='%(levelname)-8s %(message)s'):
+                    
+        logging.basicConfig(level=log_level, format=log_format)
+
+        logging.info("Loading chat bot main configuration...")
+
+
+        params = {}
+        params["masters"] = []
+        config_file = open(config)
+        for line in config_file:
+            line = line.rstrip('\n')
+            array = line.split("=",maxsplit=1)
+            if len(array) == 2:
+                if array[0] == "add_master":
+                    logging.info("New master found!")
+                    logging.info(array[1])
+                    params["masters"] += [array[1]]
+                else:
+                    # uncommenting this will reveal password to stdout
+                    # logging.info('New parameter "' + str(array[0]) + '" is set to "' + str(array[1]) + '"')
+                    params[array[0]] = array[1]
+        config_file.close()
+        '''
+        get(key[, default]
+        Return the value for key if key is in the dictionary, else default. If default is not given, it defaults to None, so that this method never raises a KeyError.
+        '''
+        login = params.get("login")
+        logging.debug("CONF:\tLogin is set to " + login)
+        password = params.get("password")
+        # logging.debug("CONF:\tPassword is set to " + password)
+        masters = params.get("masters", ["NO MASTER SET!"])
+        logging.debug("CONF:\tmasters are set to " + str(masters))
+
+        # check:
+        if masters == []: logging.error("MASTER DEVICE NOT SET!!!")
+
+        logging.info("Configuration is loaded.")
+        
+        
     def session_start(self, event):
         self.send_presence()
         self.get_roster()
@@ -234,6 +240,8 @@ class EchoBot(ClientXMPP):
         self.disconnect(wait=True)
     
 
+    
+# (just in case it was launched as main)
 if __name__ == '__main__':
     # Ideally use optparse or argparse to get JID,
     # password, and log level.
